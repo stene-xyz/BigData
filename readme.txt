@@ -3,12 +3,17 @@
 #####################
 
 == About ==
-stene.xyz BigData is a small script to handle (mostly manual) parsing of CSV files.
+stene.xyz BigData is a small script to handle (mostly manual) analysis of CSV files.
 
 == License ==
 stene.xyz BigData is licensed CC-BY.
 
 == Changelog ==
+0.3-a:
+    - Fixed command parser.
+    - Fixed .csv parser.
+    - Added "item" command.
+    - Removed empty "merge" function.
 0.2-a:
     - Fixed crashing bug when importing file.
     - Better error messages.
@@ -18,4 +23,4 @@ stene.xyz BigData is licensed CC-BY.
     - Initial release.
 
 == Known bugs ==
-- Parsing errors can occur if one line has a value containing commas (eg. within quotes)
+- Strict matching doesn't work

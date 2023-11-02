@@ -2,7 +2,7 @@
 # stene.xyz BigData
 # Quick n' easy data parser
 
-import os, sys, json
+import os, sys, json, shlex, csv
 global current_dataset_path, current_dataset, strict_matching
 strict_matching = False
 current_dataset_path = ""
@@ -20,29 +20,12 @@ def command():
 	global current_dataset, current_dataset_path, strict_matching
 	raw_command = input(current_dataset_path + "> ")
 	command = raw_command.split(" ")[0]
-	raw_args = raw_command.split(" ")[1:]
-
-	# Parse arguments
-	args = []
-	long_arg = ""
-	in_long_arg = False
-	for arg in raw_args:
-		if(arg.startswith("\"")):
-			in_long_arg = True
-			arg = arg[1:]
-			long_arg = arg
-		elif(in_long_arg):
-			long_arg += " " + arg
-			if(arg.endswith("\"")):
-				long_arg = long_arg[:-1]
-				args.append(long_arg)
-		else:
-			args.append(arg)
+	args = shlex.split(raw_command.replace(command + " ", ""))
 
 	# Command handlers
 	if(command == "about"):
 		print("stene.xyz BigData")
-		print("Version 0.2-a")
+		print("Version 0.3-a")
 		print("Written by Johnny Stene <johnny@stene.xyz>")
 	elif(command == "help"):
 		print("about - About BigData")
@@ -53,11 +36,11 @@ def command():
 		print("open <file> - Load a dataset.")
 		print("save - Save the current dataset.")
 		print("copy <file> - Save a copy of the current dataset.")
-		print("merge <file> - Merge this dataset with another.")
 		print("import <file> - Import a .csv file.")
 		print("export_dataset <file> - Exports the whole dataset.")
 		print("export_field <field> <file> - Exports a list of all points in the given field as a plain text file.")
 		print("info - Print database information.")
+		print("item <item number> - Gets the nth item in the database.")
 
 		print("DATA MANIPULATION")
 		print("strict_matching - Toggle strict matching")
@@ -83,18 +66,21 @@ def command():
 	elif(command == "copy"):
 		current_dataset_path = args[0] + ".bdata"
 		save_dataset()
-	elif(command == "merge"):
-		print("TODO")
 	elif(command == "import"):
 		try:
 			with open(args[0]) as infile:
+				# get ready to parse the file
 				content = infile.read()
 				header = content.split("\n")[0]
+				parser = csv.reader(content.split("\n")[1:])
 
 				# build template
+				# this gets used to turn csv lines into dictionaries
 				template = []
 				for item in header.split(","):
 					template.append(item)
+
+					# sanity check, make sure imported file doesn't contain weird entries
 					if(len(current_dataset) > 0):
 						if not(item in current_dataset[0]):
 							if(item == "[IGNORE]"):
@@ -102,56 +88,78 @@ def command():
 							print("ERROR: Input file and dataset not alike! Dataset does not contain \"" + item + "\" field.")
 							return
 
-				# sanity check
+				# sanity check, warn user if importing file without some entries
 				if(len(current_dataset) > 0):
 					for item in current_dataset[0]:
 						if not(item in template):
 							print("WARN: Input file and dataset not alike! Input file does not contain \"" + item + "\" field.")
-
-				# add data
-				content = content.replace(header, "")
-				current_item = {}
-				current_position = 0
+				
+				# go through and convert everything into dictionaries
 				item_count = 0
-				for point in content.split(","):
-					if not(template[current_position] == "[IGNORE]"):
-						current_item[template[current_position]] = point.strip()
-					current_position += 1
-					if(current_position == len(template)):
-						current_position = 0
-						current_dataset.append(current_item)
-						current_item = {}
-						item_count += 1
+				for row in parser:
+					# some rows are blank
+					if(len(row) == 0):
+						continue
+
+					# build item
+					current_item = {}
+					for i in range(0, len(row)):
+						current_item[template[i]] = row[i]
+					current_dataset.append(current_item)
+
+					# used for friendly message at end
+					item_count += 1
 				print(str(item_count) + " items imported.")
 		except Exception as e:
 			print("Error while importing.")
 			print(e)
 	elif(command == "export_dataset"):
+		# obv. don't want to write blank file
 		if(len(current_dataset) == 0):
 			print("Error: Current dataset empty.")
 		else:
 			try:
+				# open file for overwriting 
 				with open(args[0], "w") as outfile:
+					# get field information
 					header = ""
 					fields = []
 					for item in current_dataset[0]:
 						header += item + ","
 						fields.append(item)
 					header = header[:-1]
+					
+					# write header to the file
 					outfile.write(header + "\n")
+
+					# write contents of everything to file
 					for item in current_dataset:
-						for i in range(0, len(fields) - 1):
-							outfile.write(item[fields[i]] + ",")
-						outfile.write(item[fields[-1]] + "\n")
-				print("Done.")
+						# item_text stores the contents of each line so we can replace the last comma with a newline
+						item_text = ""
+						for i in range(0, len(fields)):
+							field = item[fields[i]]
+
+							# this is needed to avoid writing a garbage csv
+							if("," in field):
+								field = "\"" + field + "\""
+							item_text += field + ","
+						item_text = item_text[:-1] + "\n"
+						outfile.write(item_text)
+				print("Done. Wrote " + str(len(current_dataset)) + " items.")
 			except Exception as e:
 				print("Failed to write.")
 				print(e)
 	elif(command == "export_field"):
+		# once again, don't want a blank file
 		if(len(current_dataset) == 0):
 			print("Error: Current dataset empty.")
 		else:
 			try:
+				# sanity check because user (me) is a moron
+				if not(args[0] in current_dataset[0]):
+					print("Field does not exist")
+
+				# literally just write every field as a line
 				with open(args[1]) as outfile:
 					for item in current_dataset:
 						outfile.write(item[args[0]] + "\n")
@@ -162,7 +170,10 @@ def command():
 	elif(command == "info"):
 		print("DATASET INFO:")
 		if(len(current_dataset) > 0):
+			# item count
 			print(str(len(current_dataset)) + " items in dataset")
+
+			# field list
 			print("Dataset has the following fields:")
 			fields = ""
 			for item in current_dataset[0]:
@@ -171,8 +182,17 @@ def command():
 			print(fields)
 		else:
 			print("Dataset is empty")
+	elif(command == "item"):
+		# legit just print every field in the nth item it's not that hard
+		args[0] = int(args[0])
+		if(len(current_dataset) < args[0]):
+			print("Item number too high!")
+		args[0] -= 1
+		for item in current_dataset[args[0]]:
+			print(item + ": " + current_dataset[args[0]][item])
 
 	elif(command == "strict_matching"):
+		# toggle strict matching (require complete match for search/filter) on/off
 		if(strict_matching):
 			print("Strict matching disabled.")
 			strict_matching = False
@@ -180,6 +200,7 @@ def command():
 			print("Strict matching enabled.")
 			strict_matching = True
 	elif(command == "list_fields"):
+		# write out all the fields
 		if(len(current_dataset) == 0):
 			print("No fields.")
 		else:
@@ -197,6 +218,11 @@ def command():
 				field_text += item + " | "
 			print(field_text)
 			for item in current_dataset:
+				if not(args[0] in item):
+					print("ERROR: Item missing data point!")
+					print("Item looks like this: ")
+					print(item)
+					return
 				match = True
 				if(strict_matching):
 					match = (args[1] == item[args[0]])
