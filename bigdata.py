@@ -25,7 +25,7 @@ def command():
 	# Command handlers
 	if(command == "about"):
 		print("stene.xyz BigData")
-		print("Version 0.3-a")
+		print("Version beta-0")
 		print("Written by Johnny Stene <johnny@stene.xyz>")
 	elif(command == "help"):
 		print("about - About BigData")
@@ -46,8 +46,7 @@ def command():
 		print("strict_matching - Toggle strict matching")
 		print("list_fields - List all fields in the current dataset.")
 		print("search <field> <value> - Searches for all entries that contain given value in the given field.")
-		print("filter_include <field> <value> - Filters all data points (retain all data points where the given value is stored in the field)")
-		print("filter_exclude <field> <value> - Filters all data points (retain all data points where the given value isn't stored in the field)")
+		print("filter [include/exclude] <field> <value> - Filters all data points")
 
 	elif(command == "create"):
 		current_dataset_path = args[0] + ".bdata"
@@ -234,38 +233,38 @@ def command():
 					for field in fields:
 						item_text += item[field] + " | "
 					print(item_text)
-	elif(command == "filter_include"):
+	elif(command == "filter"):
+		if not(args[0] in ["exclude", "include"]):
+			print("Error: first argument must be \"exclude\" or \"include\".")
+			return
+		
 		dropped = 0
 		if(len(current_dataset) > 0):
 			updated_dataset = []
 			for item in current_dataset:
 				match = True
 				if(strict_matching):
-					match = (args[1] == item[args[0]])
+					match = (args[2] == item[args[1]])
 				else:
-					match = (args[1] in item[args[0]])
-				if(match):
+					match = (args[2] in item[args[1]])
+				if (not(match) and args[0] == "exclude") or (match and args[0] == "include"):
 					updated_dataset.append(item)
 				else:
 					dropped += 1
 			current_dataset = updated_dataset
 		print("Done. Dropped " + str(dropped) + " items.")
-	elif(command == "filter_exclude"):
-		dropped = 0
-		if(len(current_dataset) > 0):
-			updated_dataset = []
-			for item in current_dataset:
-				match = True
-				if(strict_matching):
-					match = (args[1] == item[args[0]])
-				else:
-					match = (args[1] in item[args[0]])
-				if not(match):
-					updated_dataset.append(item)
-				else:
-					dropped += 1
-			current_dataset = updated_dataset
-		print("Done. Dropped " + str(dropped) + " items.")
+
+	else:
+		print("Invalid command: " + command)
 if(__name__ == "__main__"):
+	print(" ____ ____ ____ ____ ____ ____ ____ ____ ____ ")
+	print("||s |||t |||e |||n |||e |||. |||x |||y |||z ||")
+	print("||__|||__|||__|||__|||__|||__|||__|||__|||__||")
+	print("|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|/__\|")
+	print("BigData Beta Version 0")
+	print("Written by Johnny Stene <johnny@stene.xyz>")
+	print("This software is provided as-is. For more information, see LICENSE.txt.")
+	print("")
+	print("Type \"help\" for command list.")
 	while True:
 		command()

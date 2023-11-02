@@ -3,12 +3,21 @@
 #####################
 
 == About ==
-stene.xyz BigData is a small script to handle (mostly manual) analysis of CSV files.
+stene.xyz BigData is a script to handle manual analysis of .CSV files.
+It is intended for use with smaller (<1M entries) datasets, to allow quick manipulations.
+
+== Building ==
+To build, install pyinstaller and run `pyinstaller bigdata.py`
 
 == License ==
-stene.xyz BigData is licensed CC-BY.
+stene.xyz BigData is released under the MIT license. See `LICENSE.txt`.
 
 == Changelog ==
+beta-0:
+    - Add welcome message 
+    - Relicense as MIT
+    - Filter now takes include/exclude argument.
+    - Added invalid command message.
 0.3-a:
     - Fixed command parser.
     - Fixed .csv parser.
